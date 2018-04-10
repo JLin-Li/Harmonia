@@ -115,10 +115,14 @@ public:
      */
     virtual bool OrderedMulticast(TransportReceiver *src,
                                   const std::vector<int> &groups,
-                                  const Message &m) = 0;
+                                  const Message &m,
+                                  void *app_header = nullptr,
+                                  size_t app_header_len = 0) = 0;
     /* Send ordered multicast to the default group */
     virtual bool OrderedMulticast(TransportReceiver *src,
-                                  const Message &m) = 0;
+                                  const Message &m,
+                                  void *app_header = nullptr,
+                                  size_t app_header_len = 0) = 0;
     /* Send message to failure coordinator
      */
     virtual bool SendMessageToFC(TransportReceiver *src,

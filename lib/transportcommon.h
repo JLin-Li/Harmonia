@@ -189,17 +189,21 @@ public:
     virtual bool
     OrderedMulticast(TransportReceiver *src,
                      const std::vector<int> &groups,
-                     const Message &m) override
+                     const Message &m,
+                     void *app_header,
+                     size_t app_header_len) override
     {
         Panic("Transport implementation does not support OrderedMulticast");
     }
 
     virtual bool
     OrderedMulticast(TransportReceiver *src,
-                     const Message &m) override
+                     const Message &m,
+                     void *app_header,
+                     size_t app_header_len) override
     {
         std::vector<int> groups = {0};
-        return OrderedMulticast(src, groups, m);
+        return OrderedMulticast(src, groups, m, app_header, app_header_len);
     }
 
 protected:

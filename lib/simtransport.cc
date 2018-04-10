@@ -169,7 +169,9 @@ SimulatedTransport::_SendMessageInternal(TransportReceiver *src,
 bool
 SimulatedTransport::OrderedMulticast(TransportReceiver *src,
                                      const std::vector<int> &groups,
-                                     const Message &m)
+                                     const Message &m,
+                                     void *app_header,
+                                     size_t app_header_len)
 {
     multistamp_t stamp;
     stamp.sessnum = this->sequencerID;

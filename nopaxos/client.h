@@ -49,6 +49,10 @@ public:
     ~NOPaxosClient();
     void Invoke(const string &request,
                 continuation_t continuation) override;
+    void Invoke(const string &request,
+                continuation_t continuation,
+                void *app_header,
+                size_t app_header_len) override;
     void InvokeUnlogged(int replicaIdx,
                         const string &request,
                         continuation_t continuation,
@@ -68,10 +72,15 @@ private:
         opnum_t clientReqID;
         continuation_t continuation;
         timeout_continuation_t timeoutContinuation;
+        void *app_header;
+        size_t app_header_len;
         inline PendingRequest(string request, opnum_t clientReqID,
-                              continuation_t continuation)
+                              continuation_t continuation,
+                              void *app_header,
+                              size_t app_header_len)
             : request(request), clientReqID(clientReqID),
-            continuation(continuation) { }
+            continuation(continuation),
+            app_header(app_header), app_header_len(app_header_len) { }
     };
     PendingRequest *pendingRequest;
     PendingRequest *pendingUnloggedRequest;

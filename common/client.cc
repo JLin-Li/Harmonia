@@ -78,4 +78,13 @@ Client::Invoke(const std::map<shardnum_t, std::string> &requests,
     Panic("Protocol does not support multi-shard request");
 }
 
+void
+Client::Invoke(const string &request,
+               continuation_t continuation,
+               void *app_header,
+               size_t app_header_len)
+{
+    Panic("Protocol does not support invoke with application header");
+}
+
 } // namespace specpaxos

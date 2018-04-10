@@ -60,6 +60,10 @@ public:
     virtual ~Client();
     virtual void Invoke(const string &request,
                         continuation_t continuation) = 0; // Request goes to the default group (0)
+    virtual void Invoke(const string &request,
+                        continuation_t continuation,
+                        void *app_header,
+                        size_t app_header_len); // Request goes to the default group (0)
     virtual void Invoke(const std::map<shardnum_t, std::string> &requests,
                         g_continuation_t continuation,
                         void *arg = nullptr); // Request goes to multiple groups

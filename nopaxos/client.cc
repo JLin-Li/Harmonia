@@ -69,12 +69,21 @@ void
 NOPaxosClient::Invoke(const string &request,
                       continuation_t continuation)
 {
+    Invoke(request, continuation, nullptr, 0);
+}
+
+void
+NOPaxosClient::Invoke(const string &request,
+                      continuation_t continuation,
+                      void *app_header,
+                      size_t app_header_len)
+{
     if (pendingRequest != NULL) {
         Panic("Client only supports one pending request");
     }
 
     ++lastReqID;
-    pendingRequest = new PendingRequest(request, lastReqID, continuation);
+    pendingRequest = new PendingRequest(request, lastReqID, continuation, app_header, app_header_len);
 
     SendRequest();
 }
@@ -91,7 +100,7 @@ NOPaxosClient::InvokeUnlogged(int replicaIdx,
     }
 
     ++lastReqID;
-    pendingUnloggedRequest = new PendingRequest(request, lastReqID, continuation);
+    pendingUnloggedRequest = new PendingRequest(request, lastReqID, continuation, nullptr, 0);
     pendingUnloggedRequest->timeoutContinuation = timeoutContinuation;
 
     proto::UnloggedRequestMessage reqMsg;
@@ -116,7 +125,7 @@ NOPaxosClient::SendRequest()
     reqMsg.set_msgnum(0);
     reqMsg.set_sessnum(0);
 
-    transport->OrderedMulticast(this, reqMsg);
+    transport->OrderedMulticast(this, reqMsg, pendingRequest->app_header, pendingRequest->app_header_len);
 
     requestTimeout->Reset();
 }

@@ -78,7 +78,9 @@ public:
     void CancelAllTimers() override;
     bool OrderedMulticast(TransportReceiver *src,
                           const std::vector<int> &groups,
-                          const Message &m) override;
+                          const Message &m,
+                          void *app_header = nullptr,
+                          size_t app_header_len = 0) override;
 
     // Returns if simtransport still have timers
     bool HasTimers() {

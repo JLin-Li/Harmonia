@@ -532,7 +532,9 @@ UDPTransport::SendMessageInternal(TransportReceiver *src,
 bool
 UDPTransport::OrderedMulticast(TransportReceiver *src,
                                const std::vector<int> &groups,
-                               const Message &m)
+                               const Message &m,
+                               void *app_header,
+                               size_t app_header_len)
 {
     ASSERT(groups.size() > 0);
     const specpaxos::Configuration *cfg = configurations[src];

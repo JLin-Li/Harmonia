@@ -75,7 +75,9 @@ public:
                           int replicaIdx) override;
     virtual bool OrderedMulticast(TransportReceiver *src,
                                   const std::vector<int> &groups,
-                                  const Message &m) override;
+                                  const Message &m,
+                                  void *app_header = nullptr,
+                                  size_t app_header_len = 0) override;
     void Run() override;
     void Stop() override;
     int Timer(uint64_t ms, timer_callback_t cb) override;
