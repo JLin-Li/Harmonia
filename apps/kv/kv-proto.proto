@@ -1,0 +1,26 @@
+package specpaxos.kv.proto;
+
+message ReadMessage {
+    required string key = 1;
+}
+
+message WriteMessage {
+    required string key = 1;
+    required string value = 2;
+}
+
+message KVRequest {
+    oneof msg {
+        ReadMessage read = 1;
+        WriteMessage write = 2;
+    }
+}
+
+message KVReply {
+    enum Status {
+        SUCCESS = 0;
+        FAILED = 1;
+    }
+    required Status status = 1;
+    optional string value = 2;
+}
