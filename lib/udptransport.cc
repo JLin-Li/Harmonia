@@ -550,9 +550,9 @@ UDPTransport::OrderedMulticast(TransportReceiver *src,
     }
 
     // ordered multicast meta data wire format:
-    // udp src port + sess_num + number of groups + each (groupId + sequence number)
+    // udp src port + sess_num + number of groups + each (groupId + sequence number) + app_header_len(16) + app_header
     size_t meta_len = sizeof(uint16_t) + sizeof(sessnum_t) + sizeof(uint32_t) +
-        groups.size() * (sizeof(shardnum_t) + sizeof(msgnum_t));
+        groups.size() * (sizeof(shardnum_t) + sizeof(msgnum_t)) + sizeof(uint16_t) + app_header_len;
 
     void *meta_data = malloc(meta_len);
     char *ptr = (char *)meta_data;
@@ -568,6 +568,12 @@ UDPTransport::OrderedMulticast(TransportReceiver *src,
         *(shardnum_t *)ptr = groupIdx;
         ptr += sizeof(shardnum_t);
         ptr += sizeof(msgnum_t);
+    }
+    // application header
+    *(uint16_t *)ptr = (uint16_t)app_header_len;
+    ptr += sizeof(uint16_t);
+    if (app_header_len > 0) {
+        memcpy((void *)ptr, app_header, app_header_len);
     }
 
     bool ret = _SendMessageInternal(src, kv->second, m, meta_len, meta_data);
@@ -744,6 +750,9 @@ UDPTransport::ProcessPacket(int fd, sockaddr_in sender, socklen_t senderSize,
             ptr += sizeof(msgnum_t);
             stamp.seqnums.insert(std::make_pair(groupIdx, seqnum));
         }
+        stamp.app_header_len = *(uint16_t *)ptr;
+        ptr += sizeof(uint16_t);
+        stamp.app_header = ptr;
         meta_data = (void *)&stamp;
     }
 

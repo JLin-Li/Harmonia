@@ -8,3 +8,5 @@ PROTOS += $(addprefix $(d), \
 
 OBJS-kv-client := $(o)client.o $(o)kv-proto.o
 OBJS-kv-server := $(o)server.o $(o)kv-proto.o
+
+include $(d)tests/Rules.mk

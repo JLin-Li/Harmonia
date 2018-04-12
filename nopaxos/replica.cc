@@ -30,6 +30,7 @@
 
 #include "nopaxos/replica.h"
 #include "nopaxos/nopaxos-proto.pb.h"
+#include "apps/app-header.h"
 
 #include "lib/message.h"
 #include "lib/assert.h"
@@ -262,6 +263,14 @@ NOPaxosReplica::HandleClientRequest(const TransportAddress &remote,
         multistamp_t *ordered = (multistamp_t*)meta_data;
         msg.set_sessnum(ordered->sessnum);
         msg.set_msgnum(ordered->seqnums[0]);
+        if (ordered->app_header_len > 0) {
+            char *ptr = (char *)ordered->app_header;
+            apptype_t app_type = *(apptype_t *)ptr;
+            ptr += sizeof(apptype_t);
+            kvop_t kvop = *(kvop_t *)ptr;
+            ptr += sizeof(kvop_t);
+            char *key = ptr;
+        }
     } else {
         // Simulated transport directly write sessnum and
         // msgnum into RequestMessage

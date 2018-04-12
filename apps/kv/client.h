@@ -5,6 +5,7 @@
 #include <mutex>
 #include <condition_variable>
 #include "common/client.h"
+#include "apps/app-header.h"
 #include "apps/kv/kv-proto.pb.h"
 
 namespace specpaxos {
@@ -34,6 +35,7 @@ private:
                        size_t app_header_len);
     void InvokeCallback(const std::string &request, const std::string &reply);
     void RunTransport();
+    void ConstructAppHeader(KVOp op, const std::string &key, void **app_header, size_t &app_header_len);
 };
 
 } // namespace kv

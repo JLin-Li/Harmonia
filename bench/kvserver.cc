@@ -64,7 +64,7 @@ main(int argc, char **argv)
 
     specpaxos::nopaxos::NOPaxosReplica replica(config,
                                                index,
-                                               false,
+                                               true,
                                                &transport,
                                                &server);
     transport.Run();

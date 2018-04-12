@@ -30,7 +30,12 @@ KVClient::Read(const std::string &key, std::string &value)
 
     request.mutable_read()->set_key(key);
     request.SerializeToString(&request_str);
-    reply_str = Invoke(request_str, nullptr, 0);
+
+    void *app_header;
+    size_t app_header_len;
+    ConstructAppHeader(KVOp::READ, key, &app_header, app_header_len);
+    reply_str = Invoke(request_str, app_header, app_header_len);
+    free(app_header);
 
     reply.ParseFromString(reply_str);
     value = reply.value();
@@ -47,7 +52,12 @@ KVClient::Write(const std::string &key, const std::string &value)
     request.mutable_write()->set_key(key);
     request.mutable_write()->set_value(value);
     request.SerializeToString(&request_str);
-    reply_str = Invoke(request_str, nullptr, 0);
+
+    void *app_header;
+    size_t app_header_len;
+    ConstructAppHeader(KVOp::WRITE, key, &app_header, app_header_len);
+    reply_str = Invoke(request_str, app_header, app_header_len);
+    free(app_header);
 
     reply.ParseFromString(reply_str);
     return reply.status() == KVReply::SUCCESS;
@@ -88,6 +98,19 @@ void
 KVClient::RunTransport()
 {
     this->transport->Run();
+}
+
+void
+KVClient::ConstructAppHeader(KVOp op, const std::string &key, void **app_header, size_t &app_header_len)
+{
+    app_header_len = KV_HEADER_BASE_LEN + key.length() + 1; // +1 for terminating null
+    *app_header = malloc(app_header_len);
+    char *ptr = (char *)*app_header;
+    *(apptype_t *)ptr = (apptype_t)AppType::KV;
+    ptr += sizeof(apptype_t);
+    *(kvop_t *)ptr = (kvop_t)op;
+    ptr += sizeof(kvop_t);
+    memcpy(ptr, key.c_str(), key.length() + 1);
 }
 
 } // namespace kv

@@ -67,10 +67,18 @@ protected:
 typedef std::function<void (void)> timer_callback_t;
 
 // ordered multicast meta data
-typedef struct {
+struct multistamp_t {
     sessnum_t sessnum;
     std::map<shardnum_t, msgnum_t> seqnums;
-} multistamp_t;
+    void *app_header;
+    size_t app_header_len;
+    inline multistamp_t(sessnum_t sessnum = 0,
+                        void *app_header = nullptr,
+                        size_t app_header_len = 0)
+        : sessnum(sessnum),
+        app_header(app_header),
+        app_header_len(app_header_len) {};
+};
 
 class Transport
 {

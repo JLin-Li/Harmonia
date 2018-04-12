@@ -182,6 +182,8 @@ SimulatedTransport::OrderedMulticast(TransportReceiver *src,
         this->noCounters[groupIdx]++;
         stamp.seqnums[groupIdx] = this->noCounters[groupIdx];
     }
+    stamp.app_header = app_header;
+    stamp.app_header_len = app_header_len;
 
     const specpaxos::Configuration *cfg = this->configurations[src];
     ASSERT(cfg != NULL);
