@@ -32,6 +32,7 @@
 #include "lib/assert.h"
 #include "lib/message.h"
 #include "lib/simtransport.h"
+#include "apps/app-header.h"
 #include <google/protobuf/message.h>
 
 SimulatedTransportAddress::SimulatedTransportAddress(int addr)
@@ -166,14 +167,12 @@ SimulatedTransport::_SendMessageInternal(TransportReceiver *src,
     return true;
 }
 
-bool
-SimulatedTransport::OrderedMulticast(TransportReceiver *src,
-                                     const std::vector<int> &groups,
-                                     const Message &m,
-                                     void *app_header,
-                                     size_t app_header_len)
+void
+SimulatedTransport::Sequencer(multistamp_t &stamp,
+                              const std::vector<int> &groups,
+                              void *app_header,
+                              size_t app_header_len)
 {
-    multistamp_t stamp;
     stamp.sessnum = this->sequencerID;
     for (int groupIdx : groups) {
         if (this->noCounters.find(groupIdx) == this->noCounters.end()) {
@@ -182,9 +181,37 @@ SimulatedTransport::OrderedMulticast(TransportReceiver *src,
         this->noCounters[groupIdx]++;
         stamp.seqnums[groupIdx] = this->noCounters[groupIdx];
     }
+    if (app_header != nullptr) {
+        char *ptr = (char *)app_header;
+        apptype_t app_type = *(apptype_t *)ptr;
+        if (app_type == APPTYPE_KV) {
+            ptr += sizeof(apptype_t);
+            kvop_t *kv_op = (kvop_t *)ptr;
+            ptr += sizeof(kvop_t);
+            std::string key(ptr);
+            if (*kv_op == KVOP_READ) {
+                if (this->modifiedKeys.count(key) == 0) {
+                    // Non-dirty key
+                    *kv_op = KVOP_READ_ONE;
+                }
+            } else if (*kv_op == KVOP_WRITE) {
+                this->modifiedKeys.insert(key);
+            }
+        }
+    }
     stamp.app_header = app_header;
     stamp.app_header_len = app_header_len;
+}
 
+bool
+SimulatedTransport::OrderedMulticast(TransportReceiver *src,
+                                     const std::vector<int> &groups,
+                                     const Message &m,
+                                     void *app_header,
+                                     size_t app_header_len)
+{
+    multistamp_t stamp;
+    Sequencer(stamp, groups, app_header, app_header_len);
     const specpaxos::Configuration *cfg = this->configurations[src];
     ASSERT(cfg != NULL);
 
@@ -194,6 +221,20 @@ SimulatedTransport::OrderedMulticast(TransportReceiver *src,
 
     const SimulatedTransportAddress &srcAddr = dynamic_cast<const SimulatedTransportAddress &>(src->GetAddress());
     for (int groupIdx : groups) {
+        if (stamp.app_header != nullptr) {
+            kvop_t op = *(kvop_t *)((char *)stamp.app_header+sizeof(apptype_t));
+            if (op == KVOP_READ_ONE) {
+                // Forward to one (randomly chosen) replica
+                int replica_index = rand() % cfg->n;
+                if (!_SendMessageInternal(src,
+                                          this->replicaAddresses[cfg][groupIdx].at(replica_index),
+                                          m,
+                                          stamp)) {
+                    return false;
+                }
+                return true;
+            }
+        }
         for (auto &kv : this->replicaAddresses[cfg][groupIdx]) {
             if (srcAddr == kv.second) {
                 continue;

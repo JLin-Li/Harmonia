@@ -35,7 +35,7 @@ private:
                        size_t app_header_len);
     void InvokeCallback(const std::string &request, const std::string &reply);
     void RunTransport();
-    void ConstructAppHeader(KVOp op, const std::string &key, void **app_header, size_t &app_header_len);
+    void ConstructAppHeader(kvop_t op, const std::string &key, void **app_header, size_t &app_header_len);
 };
 
 } // namespace kv

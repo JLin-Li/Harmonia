@@ -33,7 +33,7 @@ KVClient::Read(const std::string &key, std::string &value)
 
     void *app_header;
     size_t app_header_len;
-    ConstructAppHeader(KVOp::READ, key, &app_header, app_header_len);
+    ConstructAppHeader(KVOP_READ, key, &app_header, app_header_len);
     reply_str = Invoke(request_str, app_header, app_header_len);
     free(app_header);
 
@@ -55,7 +55,7 @@ KVClient::Write(const std::string &key, const std::string &value)
 
     void *app_header;
     size_t app_header_len;
-    ConstructAppHeader(KVOp::WRITE, key, &app_header, app_header_len);
+    ConstructAppHeader(KVOP_WRITE, key, &app_header, app_header_len);
     reply_str = Invoke(request_str, app_header, app_header_len);
     free(app_header);
 
@@ -101,14 +101,14 @@ KVClient::RunTransport()
 }
 
 void
-KVClient::ConstructAppHeader(KVOp op, const std::string &key, void **app_header, size_t &app_header_len)
+KVClient::ConstructAppHeader(kvop_t op, const std::string &key, void **app_header, size_t &app_header_len)
 {
     app_header_len = KV_HEADER_BASE_LEN + key.length() + 1; // +1 for terminating null
     *app_header = malloc(app_header_len);
     char *ptr = (char *)*app_header;
-    *(apptype_t *)ptr = (apptype_t)AppType::KV;
+    *(apptype_t *)ptr = APPTYPE_KV;
     ptr += sizeof(apptype_t);
-    *(kvop_t *)ptr = (kvop_t)op;
+    *(kvop_t *)ptr = op;
     ptr += sizeof(kvop_t);
     memcpy(ptr, key.c_str(), key.length() + 1);
 }

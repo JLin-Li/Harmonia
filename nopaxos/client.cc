@@ -145,6 +145,7 @@ NOPaxosClient::ReceiveMessage(const TransportAddress &remote,
 {
     static proto::ReplyMessage reply;
     static proto::UnloggedReplyMessage unloggedReply;
+    static proto::SingleReplicaReplyMessage singleReply;
 
     if (type == reply.GetTypeName()) {
         reply.ParseFromString(data);
@@ -152,6 +153,9 @@ NOPaxosClient::ReceiveMessage(const TransportAddress &remote,
     } else if (type == unloggedReply.GetTypeName()) {
         unloggedReply.ParseFromString(data);
         HandleUnloggedReply(remote, unloggedReply);
+    } else if (type == singleReply.GetTypeName()) {
+        singleReply.ParseFromString(data);
+        HandleSingleReplicaReply(remote, singleReply);
     } else {
         Client::ReceiveMessage(remote, type, data, nullptr);
     }
@@ -245,6 +249,25 @@ NOPaxosClient::HandleUnloggedReply(const TransportAddress &remote,
 
     PendingRequest *req = pendingUnloggedRequest;
     pendingUnloggedRequest = NULL;
+
+    req->continuation(req->request, msg.reply());
+    delete req;
+}
+
+void
+NOPaxosClient::HandleSingleReplicaReply(const TransportAddress &remote,
+                                        const proto::SingleReplicaReplyMessage &msg)
+{
+    if (pendingRequest == NULL) {
+        return;
+    }
+    if (msg.clientreqid() != pendingRequest->clientReqID) {
+        return;
+    }
+
+    requestTimeout->Stop();
+    PendingRequest *req = pendingRequest;
+    pendingRequest = NULL;
 
     req->continuation(req->request, msg.reply());
     delete req;

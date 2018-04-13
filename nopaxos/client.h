@@ -95,6 +95,8 @@ private:
                      const proto::ReplyMessage &msg);
     void HandleUnloggedReply(const TransportAddress &remote,
                              const proto::UnloggedReplyMessage &msg);
+    void HandleSingleReplicaReply(const TransportAddress &remote,
+                                  const proto::SingleReplicaReplyMessage &msg);
     void UnloggedRequestTimeoutCallback();
     bool IsLeader(view_t view, int replicaIdx);
 };

@@ -65,7 +65,27 @@ protected:
 
 TEST_F(KVTest, SimpleWriteReadTest) {
     EXPECT_TRUE(this->kvClient->Write("k1", "v1"));
+    for (const auto replica : this->replicas) {
+        EXPECT_EQ(replica->log.LastOpnum(), 1);
+    }
     std::string value;
     EXPECT_TRUE(this->kvClient->Read("k1", value));
     EXPECT_EQ(value, "v1");
+    for (const auto replica : this->replicas) {
+        EXPECT_EQ(replica->log.LastOpnum(), 2);
+    }
+    EXPECT_FALSE(this->kvClient->Read("k2", value));
+    EXPECT_EQ(value, "");
+    bool executed = false;
+    for (const auto replica : this->replicas) {
+        if (executed) {
+            EXPECT_EQ(replica->log.LastOpnum(), 2);
+        } else {
+            if (replica->log.LastOpnum() == 3) {
+                executed = true;
+            } else {
+                EXPECT_EQ(replica->log.LastOpnum(), 2);
+            }
+        }
+    }
 }

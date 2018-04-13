@@ -38,6 +38,7 @@
 #include <deque>
 #include <map>
 #include <functional>
+#include <set>
 
 class SimulatedTransportAddress : public TransportAddress
 {
@@ -137,12 +138,19 @@ private:
     std::map<int, uint64_t> noCounters; // (64bit) counter for each (32bit) group
     uint64_t sequencerID; // current sequencer ID
 
+    // Harmonia conflict detection
+    std::set<std::string> modifiedKeys;
+
     bool _SendMessageInternal(TransportReceiver *src,
                               const SimulatedTransportAddress &dstAddr,
                               const Message &m,
                               const multistamp_t &stamp);
     void RegisterEndpoint(TransportReceiver *receiver, int groupIdx, int replicaIdx);
     void RegisterFC();
+    void Sequencer(multistamp_t &stamp,
+                   const std::vector<int> &groups,
+                   void *app_header,
+                   size_t app_header_len);
 };
 
 #endif  // _LIB_SIMTRANSPORT_H_

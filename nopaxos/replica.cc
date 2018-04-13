@@ -266,10 +266,20 @@ NOPaxosReplica::HandleClientRequest(const TransportAddress &remote,
         if (ordered->app_header_len > 0) {
             char *ptr = (char *)ordered->app_header;
             apptype_t app_type = *(apptype_t *)ptr;
-            ptr += sizeof(apptype_t);
-            kvop_t kvop = *(kvop_t *)ptr;
-            ptr += sizeof(kvop_t);
-            char *key = ptr;
+            if (app_type == APPTYPE_KV) {
+                ptr += sizeof(apptype_t);
+                kvop_t kvop = *(kvop_t *)ptr;
+                if (kvop == KVOP_READ_ONE) {
+                    // Single replica read fast path
+                    SingleReplicaReplyMessage reply;
+                    reply.set_clientreqid(msg.req().clientreqid());
+                    Execute(0, msg.req(), reply);
+                    if (!this->transport->SendMessage(this, remote, reply)) {
+                        RWarning("Failed to send reply to client");
+                    }
+                    return;
+                }
+            }
         }
     } else {
         // Simulated transport directly write sessnum and

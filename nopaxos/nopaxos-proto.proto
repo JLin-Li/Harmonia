@@ -17,6 +17,11 @@ message ReplyMessage {
   optional bytes reply = 6;
 }
 
+message SingleReplicaReplyMessage {
+    required uint64 clientreqid = 1;
+    optional bytes reply = 2;
+}
+
 message UnloggedRequestMessage {
   required specpaxos.UnloggedRequest req = 1;
 }
