@@ -141,6 +141,7 @@ include nopaxos/Rules.mk
 include apps/Rules.mk
 include bench/Rules.mk
 include sequencer/Rules.mk
+include bin/Rules.mk
 
 ##################################################################
 # General rules
