@@ -135,6 +135,11 @@ public:
      */
     virtual bool SendMessageToFC(TransportReceiver *src,
                                  const Message &m) = 0;
+    /* Send message to sequencer
+    */
+    virtual bool SendMessageToSequencer(TransportReceiver *src,
+                                        void *msg,
+                                        size_t msg_len) = 0;
     virtual int Timer(uint64_t ms, timer_callback_t cb) = 0;
     virtual bool CancelTimer(int id) = 0;
     virtual void CancelAllTimers() = 0;

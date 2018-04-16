@@ -580,6 +580,31 @@ UDPTransport::OrderedMulticast(TransportReceiver *src,
     free(meta_data);
     return ret;
 }
+bool
+UDPTransport::SendMessageToSequencer(TransportReceiver *src,
+                                     void *msg,
+                                     size_t msg_len)
+{
+    const specpaxos::Configuration *cfg = configurations[src];
+    if (!replicaAddressesInitialized) {
+        LookupAddresses();
+    }
+
+    auto kv = multicastAddresses.find(cfg);
+    if (kv == multicastAddresses.end()) {
+        Panic("Configuration has no multicast address...");
+    }
+
+    sockaddr_in sin = dynamic_cast<const UDPTransportAddress &>(kv->second).addr;
+    int fd = fds[src];
+
+    if (sendto(fd, msg, msg_len, 0, (sockaddr *)&sin, sizeof(sin)) < 0) {
+        PWarning("Failed to send message to sequencer");
+        return false;
+    }
+
+    return true;
+}
 
 void
 UDPTransport::Run()

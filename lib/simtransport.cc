@@ -247,6 +247,14 @@ SimulatedTransport::OrderedMulticast(TransportReceiver *src,
     return true;
 }
 
+bool
+SimulatedTransport::SendMessageToSequencer(TransportReceiver *src,
+                                           void *msg,
+                                           size_t msg_len)
+{
+    return true;
+}
+
 SimulatedTransportAddress
 SimulatedTransport::LookupAddress(const specpaxos::Configuration &cfg,
                                   int groupIdx,

@@ -82,6 +82,9 @@ public:
                           const Message &m,
                           void *app_header = nullptr,
                           size_t app_header_len = 0) override;
+    bool SendMessageToSequencer(TransportReceiver *src,
+                                void *msg,
+                                size_t msg_len) override;
 
     // Returns if simtransport still have timers
     bool HasTimers() {

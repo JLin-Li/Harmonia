@@ -78,6 +78,9 @@ public:
                                   const Message &m,
                                   void *app_header = nullptr,
                                   size_t app_header_len = 0) override;
+    virtual bool SendMessageToSequencer(TransportReceiver *src,
+                                        void *msg,
+                                        size_t msg_len) override;
     void Run() override;
     void Stop() override;
     int Timer(uint64_t ms, timer_callback_t cb) override;

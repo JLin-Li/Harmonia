@@ -68,6 +68,7 @@ KVClient::Invoke(const std::string &request,
                  void *app_header,
                  size_t app_header_len)
 {
+    this->replied = false;
     this->transport->Timer(0, [ = ]() {
         this->client->Invoke(request,
                              bind(&KVClient::InvokeCallback,
@@ -77,7 +78,6 @@ KVClient::Invoke(const std::string &request,
                              app_header,
                              app_header_len);
     });
-    this->replied = false;
     std::unique_lock<std::mutex> lck(this->mtx);
     while (!this->replied) {
         this->cv.wait(lck);
