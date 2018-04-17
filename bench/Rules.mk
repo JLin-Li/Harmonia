@@ -10,7 +10,7 @@ $(d)client: $(o)client.o $(OBJS-spec-client) $(OBJS-vr-client) $(OBJS-fastpaxos-
 
 $(d)replica: $(o)replica.o $(OBJS-spec-replica) $(OBJS-vr-replica) $(OBJS-fastpaxos-replica) $(OBJS-unreplicated-replica) $(OBJS-nopaxos-replica) $(LIB-udptransport)
 
-$(d)kvclient: $(o)kvclient.o $(OBJS-nopaxos-client) $(OBJS-kv-client) $(LIB-udptransport)
+$(d)kvclient: $(o)kvclient.o $(OBJS-nopaxos-client) $(OBJS-kv-client) $(LIB-udptransport) $(LIB-latency)
 
 $(d)kvserver: $(o)kvserver.o $(OBJS-nopaxos-replica) $(OBJS-kv-server) $(LIB-udptransport)
 
