@@ -91,7 +91,7 @@ int main(int argc, char **argv)
     struct timeval start, now, m1, m2;
     struct Latency_t latency;
     std::vector<uint64_t> latencies;
-    uint64_t nreads = 0, nwrites = 0;
+    uint64_t nreads = 0, nwrites = 0, total_latency = 0;
 
     _Latency_Init(&latency, "op");
     latencies.reserve(duration * 10000);
@@ -137,6 +137,7 @@ int main(int argc, char **argv)
 
         if (phase == MEASURE) {
             latencies.push_back(ns);
+            total_latency += (ns / 1000);
         }
     }
 
@@ -154,6 +155,7 @@ int main(int argc, char **argv)
     uint64_t ns  = latencies[total_ops / 2];
     LatencyFmtNS(ns, buf);
     Notice("Median latency is %ld ns (%s)", ns, buf);
+    Notice("Average latency is %ld us", total_latency / total_ops);
 
     ns = latencies[total_ops * 90 / 100];
     LatencyFmtNS(ns, buf);
