@@ -35,6 +35,7 @@ typedef uint64_t msg_num_t;
 typedef uint16_t appheader_len_t;
 typedef uint8_t apptype_t;
 typedef uint8_t kvop_t;
+typedef uint64_t sync_pt_t;
 
 static const identifier_t HARMONIA_ID = 0x20050318;
 static const identifier_t RESET_ID = 0xDEADBEEF;
