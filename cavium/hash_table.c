@@ -260,6 +260,8 @@ delete_from_bucket(concurrent_ht_t *ht,
             KVC_START_INCR(ht, keylock);
 
             TABLE_TAG(ht, index, i) = 0;
+            TABLE_KEY(ht, index, i).key_len = 0;
+            TABLE_KEY(ht, index, i).key[0] = '\0';
             TABLE_VAL(ht, index, i).val_len = 0;
 
             ht->hash_total_items--;
