@@ -16,10 +16,10 @@ static msg_num_t counter;
 static sess_num_t sess_num;
 static uint32_t last_replica;
 #define N_REPLICAS 3
-static concurrent_ht_t *modified_keys_sc = NULL;
-static concurrent_ht_t *modified_keys_ss = NULL;
-static sync_pt_t sync_pt_complete;
-static sync_pt_t sync_pt_start;
+static concurrent_ht_t *modified_keys_completed = NULL;
+static concurrent_ht_t *modified_keys_started = NULL;
+static sync_pt_t sync_pt_completed;
+static sync_pt_t sync_pt_started;
 
 /*
  * Static function declarations
@@ -29,8 +29,8 @@ static uint64_t checksum(const void *buf, size_t n);
 static int init();
 static packet_type_t match_harmonia_packet(uint64_t buf);
 static void process_ordered_multicast(uint64_t buf);
+static void process_sequencer(uint64_t buf);
 static int process_kv(uint64_t buf);
-static void process_reset(uint64_t buf);
 
 /*
  * Static function definitions
@@ -67,17 +67,17 @@ static int init()
     sess_num = 0;
     counter = 0;
     last_replica = 0;
-    sync_pt_complete = 0;
-    sync_pt_start = 0;
+    sync_pt_completed = 0;
+    sync_pt_started = 0;
 
-    if (modified_keys_sc != NULL) {
-        concur_hashtable_free(modified_keys_sc);
+    if (modified_keys_completed != NULL) {
+        concur_hashtable_free(modified_keys_completed);
     }
-    modified_keys_sc = concur_hashtable_init(0);
-    if (modified_keys_ss != NULL) {
-        concur_hashtable_free(modified_keys_ss);
+    modified_keys_completed = concur_hashtable_init(0);
+    if (modified_keys_started != NULL) {
+        concur_hashtable_free(modified_keys_started);
     }
-    modified_keys_ss = concur_hashtable_init(0);
+    modified_keys_started = concur_hashtable_init(0);
     return 0;
 }
 
@@ -88,8 +88,8 @@ static packet_type_t match_harmonia_packet(uint64_t buf)
         convert_endian(&identifier, (const void *)(buf+APP_HEADER), sizeof(identifier_t));
         if (identifier == HARMONIA_ID) {
             return ORDERED_MCAST;
-        } else if (identifier == RESET_ID) {
-            return RESET;
+        } else if (identifier == SEQUENCER_ID) {
+            return SEQUENCER;
         } else {
             return UNKNOWN;
         }
@@ -139,23 +139,27 @@ static int process_kv(uint64_t buf)
     ht_status ret;
     kvop_t *kvop = (kvop_t *)buf;
     buf += sizeof(kvop_t);
+    // XXX Currently not using opid
+    buf += sizeof(opid_t);
     char *key = (char *)buf;
 
     if (*kvop == KVOP_WRITE) {
         uint8_t val = 1;
-        ret = concur_hashtable_insert(modified_keys_sc, key, &val, sizeof(uint8_t));
+        ret = concur_hashtable_insert(modified_keys_completed, key, &val, sizeof(uint8_t));
         if (ret == HT_INSERT_FAILURE_TABLE_FULL) {
             printf("ERROR: failed to insert into modified_keys_sc\n");
         }
-        ret = concur_hashtable_insert(modified_keys_ss, key, &val, sizeof(uint8_t));
+        /*
+        ret = concur_hashtable_insert(modified_keys_started, key, &val, sizeof(uint8_t));
         if (ret == HT_INSERT_FAILURE_TABLE_FULL) {
             printf("ERROR: failed to insert into modified_keys_ss\n");
         }
+        */
         return 1;
     } else if (*kvop == KVOP_READ) {
         uint8_t *val;
         size_t val_len;
-        ret = concur_hashtable_find(modified_keys_sc, key, (void **)&val, &val_len);
+        ret = concur_hashtable_find(modified_keys_completed, key, (void **)&val, &val_len);
 
         if (ret == HT_FOUND) {
             // Conflict detected!
@@ -171,9 +175,43 @@ static int process_kv(uint64_t buf)
     }
 }
 
-static void process_reset(uint64_t buf)
+static void process_sequencer(uint64_t buf)
 {
-    init();
+    uint64_t ptr = buf + APP_HEADER + sizeof(identifier_t);
+    seqtype_t type = *(seqtype_t *)ptr;
+    ptr += sizeof(seqtype_t);
+    if (type == SEQTYPE_RESET) {
+        init();
+    } else if (type == SEQTYPE_BEG_SYNC) {
+        if (modified_keys_started != NULL) {
+            concur_hashtable_free(modified_keys_started);
+        }
+        modified_keys_started = concur_hashtable_init(0);
+        convert_endian((void *)ptr, &counter, sizeof(msg_num_t));
+        sync_pt_started = counter;
+    } else if (type == SEQTYPE_FIN_SYNC) {
+        msg_num_t ts;
+        convert_endian(&ts, (void *)ptr, sizeof(msg_num_t));
+        if (ts == sync_pt_started && ts != sync_pt_completed) {
+            if (modified_keys_completed != NULL) {
+                concur_hashtable_free(modified_keys_completed);
+            }
+            modified_keys_completed = modified_keys_started;
+            modified_keys_started = concur_hashtable_init(0);
+            sync_pt_completed = sync_pt_started;
+            sync_pt_started = 0;
+        }
+    } else if (type == SEQTYPE_COMPLETE_SYNC) {
+        nkeys_t nkeys;
+        convert_endian(&nkeys, (void *)ptr, sizeof(nkeys_t));
+        ptr += sizeof(nkeys_t);
+        nkeys_t i;
+        for (i = 0; i < nkeys; i++) {
+            char *key = (char *)ptr;
+            concur_hashtable_delete(modified_keys_completed, key);
+            ptr += strlen(key) + 1;
+        }
+    }
 }
 
 /*
@@ -194,8 +232,8 @@ void harmonia_packet_proc(uint64_t buf)
             process_ordered_multicast(buf);
             break;
         }
-        case RESET: {
-            process_reset(buf);
+        case SEQUENCER: {
+            process_sequencer(buf);
             break;
         }
         default:

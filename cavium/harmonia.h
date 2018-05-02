@@ -36,9 +36,16 @@ typedef uint16_t appheader_len_t;
 typedef uint8_t apptype_t;
 typedef uint8_t kvop_t;
 typedef uint64_t sync_pt_t;
+typedef uint8_t seqtype_t;
+typedef uint32_t opid_t;
+typedef uint16_t nkeys_t;
 
 static const identifier_t HARMONIA_ID = 0x20050318;
-static const identifier_t RESET_ID = 0xDEADBEEF;
+static const identifier_t SEQUENCER_ID = 0xDEADBEEF;
+static const seqtype_t SEQTYPE_RESET = 0;
+static const seqtype_t SEQTYPE_BEG_SYNC = 1;
+static const seqtype_t SEQTYPE_FIN_SYNC = 2;
+static const seqtype_t SEQTYPE_COMPLETE_SYNC = 3;
 static const apptype_t APPTYPE_KV = 0;
 static const kvop_t KVOP_READ = 0;
 static const kvop_t KVOP_WRITE = 1;
@@ -53,7 +60,7 @@ static const kvop_t KVOP_READ_ONE = 2;
  */
 typedef enum {
     ORDERED_MCAST,
-    RESET,
+    SEQUENCER,
     UNKNOWN
 } packet_type_t;
 
