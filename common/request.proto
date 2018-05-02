@@ -10,6 +10,7 @@ message Request {
      required uint64 clientid = 2;
      required uint64 clientreqid = 3;
      repeated ShardOp ops = 4;
+     optional string key = 5;
 }
 
 message UnloggedRequest {

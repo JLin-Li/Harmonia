@@ -1,14 +1,12 @@
 #include "lib/udptransport.h"
 #include "lib/configuration.h"
 #include "lib/transport.h"
+#include "apps/app-header.h"
 
 #include <unistd.h>
 #include <stdlib.h>
 #include <fstream>
 #include <string>
-
-typedef uint32_t identifier_t;
-static const identifier_t RESET_ID = 0xDEADBEEF;
 
 class Controller : public TransportReceiver
 {
@@ -28,9 +26,10 @@ public:
 
     void Run()
     {
-        char buf[sizeof(identifier_t)];
-        memcpy(buf, &RESET_ID, sizeof(identifier_t));
-        this->transport->SendMessageToSequencer(this, (void*)buf, sizeof(identifier_t));
+        char buf[sizeof(identifier_t) + sizeof(seqtype_t)];
+        memcpy(buf, &SEQUENCER_ID, sizeof(identifier_t));
+        *(seqtype_t *)(buf + sizeof(identifier_t)) = SEQTYPE_RESET;
+        this->transport->SendMessageToSequencer(this, (void*)buf, sizeof(identifier_t) + sizeof(seqtype_t));
     }
 
 private:

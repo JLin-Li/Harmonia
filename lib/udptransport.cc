@@ -33,6 +33,7 @@
 #include "lib/configuration.h"
 #include "lib/message.h"
 #include "lib/udptransport.h"
+#include "apps/app-header.h"
 
 #include <google/protobuf/message.h>
 #include <event2/event.h>
@@ -693,7 +694,9 @@ UDPTransport::ProcessPacket(int fd, sockaddr_in sender, socklen_t senderSize,
     ASSERT(sizeof(uint32_t) - sz > 0);
     uint32_t magic = *(uint32_t*)buf;
 
-    if (magic == NONFRAG_MAGIC) {
+    if (magic == SEQUENCER_ID) {
+        msg = string(buf + sizeof(uint32_t), sz - sizeof(uint32_t));
+    } else if (magic == NONFRAG_MAGIC) {
         // Not a fragment. Decode the packet
         DecodePacket(buf + sizeof(uint32_t), sz - sizeof(uint32_t),
                      msgType, msg, &meta_data);

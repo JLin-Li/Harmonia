@@ -29,6 +29,7 @@ private:
     std::thread *transportThread;
     std::string reply;
     bool replied;
+    opid_t opid;
 
     std::string Invoke(const std::string &request,
                        void *app_header,

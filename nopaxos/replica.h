@@ -127,6 +127,12 @@ private:
     const int SYNC_TIMEOUT = 1000;
     Timeout *leaderSyncHeardTimeout;
     const int LEADER_SYNC_HEARD_TIMEOUT = 2000;
+    /*
+    Timeout *syncBeginTimeout;
+    const int SYNC_BEGIN_TIMEOUT = 10;
+    Timeout *syncFinishTimeout;
+    const int SYNC_FINISH_TIMEOUT = 10;
+    */
 
     /* State transfer */
     opnum_t stateTransferOpBegin;
@@ -181,6 +187,10 @@ private:
                           const proto::SyncCommitMessage &msg);
     void HandleSyncPrepareRequest(const TransportAddress &remote,
                                   const proto::SyncPrepareRequestMessage &msg);
+    /*
+    void HandleSequencerMessage(const TransportAddress &remote,
+                                const std::string &msg);
+                                */
 
     // Returns true if the request is processed/ignored.
     // false if the request should be processed later (pending)
@@ -209,6 +219,11 @@ private:
     void SendStartViewReply();
     void SendSyncPrepare();
     void SendSyncCommit();
+    /*
+    void SendSyncBeginToSequencer();
+    void SendSyncFinishToSequencer();
+    */
+    void SendSyncCompleteToSequencer(opnum_t opnum);
 
     inline bool AmLeader() const;
     inline void AddPendingRequest(const proto::RequestMessage &msg);

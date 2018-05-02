@@ -138,6 +138,20 @@ NOPaxosReplica::NOPaxosReplica(const Configuration &config, int myIdx, bool init
                                                    RWarning("Starting view change; haven't received SyncPrepare from the leader");
                                                    StartViewChange(this->sessnum, this->view + 1);
                                                });
+    /*
+    this->syncBeginTimeout = new Timeout(transport,
+                                         SYNC_BEGIN_TIMEOUT,
+                                         [this, myIdx]() {
+                                             RWarning("Sync Begin timed out!");
+                                             SendSyncBeginToSequencer();
+                                         });
+    this->syncFinishTimeout = new Timeout(transport,
+                                          SYNC_FINISH_TIMEOUT,
+                                          [this, myIdx]() {
+                                              RWarning("Sync Begin timed out!");
+                                              SendSyncFinishToSequencer();
+                                          });
+                                          */
     if (AmLeader()) {
         this->syncTimeout->Start();
     } else {
@@ -239,6 +253,11 @@ NOPaxosReplica::ReceiveMessage(const TransportAddress &remote,
         syncCommit.ParseFromString(data);
         HandleSyncCommit(remote, syncCommit);
     }
+    /*
+    else if (type.length() == 0) {
+        HandleSequencerMessage(remote, data);
+    }
+    */
     else {
         Panic("Received unexpected message type in NOPaxos proto: %s",
               type.c_str());
@@ -278,6 +297,11 @@ NOPaxosReplica::HandleClientRequest(const TransportAddress &remote,
                         RWarning("Failed to send reply to client");
                     }
                     return;
+                } else if (kvop == KVOP_WRITE) {
+                    // Only add key to msg if request is a write
+                    // XXX currently ignore opid
+                    ptr += sizeof(kvop_t) + sizeof(opid_t);
+                    msg.mutable_req()->set_key(ptr);
                 }
             }
         }
@@ -894,6 +918,7 @@ NOPaxosReplica::HandleSyncPrepareReply(const TransportAddress &remote,
                                                      msg.replicaidx(),
                                                      msg)) {
         CommitUptoOp(msg.syncpoint());
+        //SendSyncFinishToSequencer();
     }
 }
 
@@ -979,6 +1004,48 @@ NOPaxosReplica::HandleSyncPrepareRequest(const TransportAddress &remote,
         }
     }
 }
+
+/*
+void
+NOPaxosReplica::HandleSequencerMessage(const TransportAddress &remote,
+                                       const std::string &msg)
+{
+    const char *ptr = msg.data();
+    ptr += sizeof(identifier_t);
+    seqtype_t type = *(seqtype_t *)ptr;
+    ptr += sizeof(seqtype_t);
+    if (type == SEQTYPE_BEG_SYNC) {
+        // BEG_SYNC_REPLY
+        msgnum_t ts = *(msgnum_t *)ptr;
+        RNotice("Received begin sync reply with ts %lu", ts);
+        // Cancel syncBeginTimeout.
+        // This might be an older reply, but
+        // safe to cancel it. We will retry it
+        // in the next syncTimeout.
+        this->syncBeginTimeout->Stop();
+        // XXX The timestamp the sequencer sends is a msgnum.
+        // Here we use it as a opnum, which is wrong if there
+        // is an epoch change. Fix this!
+        if (ts <= this->lastCommittedOp ||
+            ts <= this->leaderLastSyncPreparePoint) {
+            return;
+        }
+        // Start synchronization now
+        this->leaderLastSyncPreparePoint = ts;
+        SendSyncPrepare();
+    } else if (type == SEQTYPE_FIN_SYNC) {
+        // FIN_SYNC_REPLY
+        msgnum_t ts = *(msgnum_t *)ptr;
+        RNotice("Received fin sync reply with ts %lu", ts);
+        if (ts < this->lastCommittedOp) {
+            return;
+        }
+        this->syncFinishTimeout->Stop();
+    } else {
+        RWarning("Received unknown sequencer message %u\n", type);
+    }
+}
+*/
 
 bool
 NOPaxosReplica::TryProcessClientRequest(const RequestMessage &msg)
@@ -1192,6 +1259,12 @@ NOPaxosReplica::CommitUptoOp(opnum_t opnum)
         RPanic("Committing operations not received yet");
     }
 
+    // Leader replica inform the sequencer to clear
+    // modified keys since last commit
+    if (AmLeader()) {
+        SendSyncCompleteToSequencer(opnum);
+    }
+
     this->lastCommittedOp = opnum;
 
     // Leader replica inform the other replicas
@@ -1392,6 +1465,10 @@ NOPaxosReplica::ClearTimeoutAndQuorums()
     this->syncTimeout->Stop();
     this->syncPrepareQuorum.Clear();
     this->leaderSyncHeardTimeout->Stop();
+    /*
+    this->syncBeginTimeout->Stop();
+    this->syncFinishTimeout->Stop();
+    */
 
     // Since we only accept Sync messages from the
     // current view, we can delete all SyncPrepare
@@ -1638,6 +1715,78 @@ NOPaxosReplica::SendSyncCommit()
 
     if (!this->transport->SendMessageToAll(this, syncCommitMessage)) {
         RWarning("Failed to send SyncCommitMessage");
+    }
+}
+
+/*
+void
+NOPaxosReplica::SendSyncBeginToSequencer()
+{
+    RNotice("Sending sync begin to sequencer");
+    char buf[BEG_SYNC_LEN];
+    memcpy(buf, &SEQUENCER_ID, sizeof(identifier_t));
+    memcpy(buf+sizeof(identifier_t), &SEQTYPE_BEG_SYNC, sizeof(seqtype_t));
+
+    if (!this->transport->SendMessageToSequencer(this, (void *)buf, BEG_SYNC_LEN)) {
+        RWarning("Failed to send BEG_SYNC to sequencer");
+    }
+    this->syncFinishTimeout->Stop();
+    this->syncBeginTimeout->Reset();
+}
+
+void
+NOPaxosReplica::SendSyncFinishToSequencer()
+{
+    char buf[FIN_SYNC_LEN];
+    memcpy(buf, &SEQUENCER_ID, sizeof(identifier_t));
+    memcpy(buf+sizeof(identifier_t), &SEQTYPE_FIN_SYNC, sizeof(seqtype_t));
+    memcpy(buf+sizeof(identifier_t)+sizeof(seqtype_t),
+           &this->lastCommittedOp,
+           sizeof(msgnum_t));
+    if (!this->transport->SendMessageToSequencer(this, (void *)buf, FIN_SYNC_LEN)) {
+        RWarning("Failed to send FIN_SYNC to sequencer");
+    }
+    this->syncFinishTimeout->Reset();
+}
+*/
+
+void
+NOPaxosReplica::SendSyncCompleteToSequencer(opnum_t opnum)
+{
+    char buf[MAX_COMPLETE_SYNC_LEN];
+    char *ptr = buf;
+    memcpy(ptr, &SEQUENCER_ID, sizeof(identifier_t));
+    ptr += sizeof(identifier_t);
+    memcpy(ptr, &SEQTYPE_COMPLETE_SYNC, sizeof(seqtype_t));
+    ptr += sizeof(seqtype_t);
+    char *nkeys_ptr = ptr;
+    ptr += sizeof(nkeys_t);
+    nkeys_t nkeys = 0;
+    for (opnum_t i = this->lastCommittedOp + 1; i <= opnum; i++) {
+        LogEntry *entry = this->log.Find(i);
+        if (entry->state == LOG_STATE_RECEIVED) {
+            if (entry->request.has_key()) {
+                nkeys++;
+                strcpy(ptr, entry->request.key().c_str());
+                ptr += entry->request.key().length() + 1;
+                if ((unsigned int)(ptr - buf) > COMPLETE_SYNC_LEN_THRESHOLD) {
+                    // Send out the message and reset ptr
+                    *(nkeys_t *)nkeys_ptr = nkeys;
+                    if (!this->transport->SendMessageToSequencer(this, (void *)buf, ptr - buf)) {
+                        RWarning("Failed to send COMPLETE_SYNC to sequencer");
+                    }
+                    ptr = nkeys_ptr + sizeof(nkeys_t);
+                    nkeys = 0;
+                }
+            }
+        }
+    }
+    // If we have remaining keys, send them out
+    if (nkeys > 0) {
+        *(nkeys_t *)nkeys_ptr = nkeys;
+        if (!this->transport->SendMessageToSequencer(this, (void *)buf, ptr - buf)) {
+            RWarning("Failed to send COMPLETE_SYNC to sequencer");
+        }
     }
 }
 

@@ -8,9 +8,9 @@ using namespace proto;
 
 KVClient::KVClient(Transport *transport,
                    Client *client)
-    : transport(transport), client(client)
+    : transport(transport), client(client),
+    replied(false), opid(0)
 {
-    this->replied = false;
     this->transportThread = new std::thread(&KVClient::RunTransport, this);
 }
 
@@ -33,6 +33,7 @@ KVClient::Read(const std::string &key, std::string &value)
 
     void *app_header;
     size_t app_header_len;
+    this->opid++;
     ConstructAppHeader(KVOP_READ, key, &app_header, app_header_len);
     reply_str = Invoke(request_str, app_header, app_header_len);
     free(app_header);
@@ -55,6 +56,7 @@ KVClient::Write(const std::string &key, const std::string &value)
 
     void *app_header;
     size_t app_header_len;
+    this->opid++;
     ConstructAppHeader(KVOP_WRITE, key, &app_header, app_header_len);
     reply_str = Invoke(request_str, app_header, app_header_len);
     free(app_header);
@@ -110,6 +112,8 @@ KVClient::ConstructAppHeader(kvop_t op, const std::string &key, void **app_heade
     ptr += sizeof(apptype_t);
     *(kvop_t *)ptr = op;
     ptr += sizeof(kvop_t);
+    *(opid_t *)ptr = this->opid;
+    ptr += sizeof(opid_t);
     memcpy(ptr, key.c_str(), key.length() + 1);
 }
 
